@@ -1,14 +1,24 @@
-# Use official OpenJDK 17 image (stable LTS)
-FROM openjdk:17-jdk-slim
+# Use Maven + JDK to build the app
+FROM maven:3.9.1-eclipse-temurin-17 AS build
 
-# Set working directory in the container
 WORKDIR /app
 
-# Copy the built JAR file into the container
-COPY target/mymemories-0.0.1-SNAPSHOT.jar app.jar
+# Copy pom.xml and download dependencies first (caching)
+COPY pom.xml .
+RUN mvn dependency:go-offline
 
-# Expose port 8085
+# Copy source code and build the JAR
+COPY src ./src
+RUN mvn clean package -DskipTests
+
+# Use lightweight JDK image to run the app
+FROM eclipse-temurin:17-jre
+
+WORKDIR /app
+
+# Copy the built JAR from the previous stage
+COPY --from=build /app/target/mymemories-0.0.1-SNAPSHOT.jar app.jar
+
 EXPOSE 8085
 
-# Run the Spring Boot app
 ENTRYPOINT ["java", "-jar", "app.jar"]
