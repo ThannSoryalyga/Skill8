@@ -1,24 +1,27 @@
-# Use Maven + JDK to build the app
-FROM maven:3.9.1-eclipse-temurin-17 AS build
+# Use Maven + JDK 21 for building
+FROM maven:3.9.5-eclipse-temurin-21 AS build
 
 WORKDIR /app
 
-# Copy pom.xml and download dependencies first (caching)
+# Copy pom.xml and download dependencies first (cache optimization)
 COPY pom.xml .
 RUN mvn dependency:go-offline
 
-# Copy source code and build the JAR
+# Copy source code
 COPY src ./src
+
+# Build the app
 RUN mvn clean package -DskipTests
 
 # Use lightweight JDK image to run the app
-FROM eclipse-temurin:17-jre
-
+FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
 
-# Copy the built JAR from the previous stage
+# Copy the built jar
 COPY --from=build /app/target/mymemories-0.0.1-SNAPSHOT.jar app.jar
 
-EXPOSE 8085
+# Expose port
+EXPOSE 8080
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Run
+ENTRYPOINT ["java","-jar","app.jar"]
