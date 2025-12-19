@@ -1,29 +1,29 @@
-# Stage 1: Build
-FROM eclipse-temurin:21-jdk-focal AS build
-
+# --- Stage 1: Build the application using Maven + JDK 21 ---
+FROM eclipse-temurin:21-jdk AS build
 WORKDIR /app
 
-# Copy pom.xml and download dependencies first (cache optimization)
-COPY pom.xml .
-RUN apt-get update && apt-get install -y maven
-RUN mvn dependency:go-offline
+# Install Maven
+RUN apt-get update && \
+    apt-get install -y maven && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
-# Copy source code
+# Copy Maven configuration and source code
+COPY pom.xml .
 COPY src ./src
 
-# Build the application
+# Build the Spring Boot JAR
 RUN mvn clean package -DskipTests
 
-# Stage 2: Run
-FROM eclipse-temurin:21-jre-focal
-
+# --- Stage 2: Run the application using Java 21 JRE ---
+FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 
-# Copy built JAR from build stage
-COPY --from=build /app/target/mymemories-0.0.1-SNAPSHOT.jar app.jar
+# Copy the built JAR from the build stage
+COPY --from=build /app/target/*.jar app.jar
 
-# Expose port (if your Spring Boot app runs on 8080)
+# Expose port 8080
 EXPOSE 8085
 
-# Start the app
-ENTRYPOINT ["java","-jar","app.jar"]
+# Run the Spring Boot application
+ENTRYPOINT ["java", "-jar", "app.jar"]
